@@ -1,0 +1,261 @@
+<form [formGroup]="TravelForm" (ngSubmit)="onSubmit()" class="form-container">
+  <h1>Travel Form</h1>
+  <p>Please fill in the details</p>
+
+  <div class="form-row">
+    <div class="input-field">
+      <label>First Name*</label>
+      <input type="text" formControlName="name" />
+      <div class="error-box" *ngIf="isInvalid('name')">Please fill the Valid Name</div>
+    </div>
+
+    <div class="input-field">
+      <label>Last Name*</label>
+      <input type="text" formControlName="lastName" />
+      <div class="error-box" *ngIf="isInvalid('lastName')">Please fill the Valid Name</div>
+    </div>
+
+    <div class="input-field">
+      <label>Email*</label>
+      <input type="email" formControlName="email" />
+      <div class="error-box" *ngIf="isInvalid('email')">Please fill the Valid email</div>
+    </div>
+
+    <div class="input-field">
+      <label>Phone No*</label>
+      <input type="number" formControlName="phoneNo" />
+      <div class="error-box" *ngIf="isInvalid('phoneNo')">Please fill the Valid phone number</div>
+    </div>
+
+    <div class="input-field">
+      <label>Password*</label>
+      <input type="password" formControlName="password" />
+      <div class="error-box" *ngIf="isInvalid('password')">Please fill the Valid password</div>
+    </div>
+
+    <button type="submit">{{ isEditing ? 'Update' : 'Submit' }}</button>
+  </div>
+</form>
+
+<!-- Data Table -->
+<div *ngIf="submittedData.length > 0" class="data-table">
+  <h3>Submitted Application</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Email</th>
+        <th>Phone No</th>
+        <th>Password</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let data of submittedData; let i = index">
+        <td>{{ data.name }}</td>
+        <td>{{ data.lastName }}</td>
+        <td>{{ data.email }}</td>
+        <td>{{ data.phoneNo }}</td>
+        <td>{{ data.password }}</td>
+        <td>
+          <button (click)="editEntry(i)">Edit</button>
+          <button (click)="onDelete(i)">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Export Button -->
+<div *ngIf="submittedData.length > 0">
+  <button (click)="onExport()">Export as JSON</button>
+</div>
+
+import { Component, OnInit } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-home',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],  
+  templateUrl: './home.component.html',
+  styleUrl: './home.component.css'
+})
+export class HomeComponent implements OnInit {
+  submitted = false;
+  isEditing = false;
+  editingIndex: number | null = null;
+
+  ApplicationForm = new FormGroup({
+    firstName: new FormControl('', [Validators.required, Validators.pattern(/^[a-zA-Z\s]*$/)]),
+    lastName: new FormControl('', [Validators.required]),
+    email: new FormControl('', [Validators.required, Validators.email]),
+    phone: new FormControl('', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]),
+    password: new FormControl('', [Validators.required])
+  });
+
+  submittedData: any[] = [];
+
+  ngOnInit() {
+    const data = localStorage.getItem('applications');
+    if (data) {
+      this.submittedData = JSON.parse(data);
+    }
+  }
+
+  onSubmitted(): void {
+    this.submitted = true;
+
+    if (this.ApplicationForm.valid) {
+      const formValue = this.ApplicationForm.value;
+
+      if (this.isEditing && this.editingIndex !== null) {
+        this.submittedData[this.editingIndex] = formValue; // Update the existing entry
+        this.isEditing = false;
+        this.editingIndex = null;
+      } else {
+        this.submittedData.push(formValue); // Add new entry
+      }
+
+      localStorage.setItem('applications', JSON.stringify(this.submittedData));
+      alert('Application Submitted Successfully');
+      console.log('Form data:', formValue);
+      this.ApplicationForm.reset();
+      this.submitted = false;
+    } else {
+      console.warn('Form is invalid');
+    }
+  }
+
+  isInvalid(controlName: string): boolean {
+    const control = this.ApplicationForm.get(controlName);
+    return !!(control && control.invalid && (control.touched || this.submitted));
+  }
+
+  
+  onAdd(index: number): void {
+    this.isEditing = true;
+    this.editingIndex = index;
+    const data = this.submittedData[index];
+    this.ApplicationForm.setValue({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      password: data.password
+    });
+  }
+
+  onEdit(index: number): void {
+    this.isEditing = true;
+    this.editingIndex = index;
+    const data = this.submittedData[index];
+    this.ApplicationForm.setValue({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      password: data.password
+    });
+  }
+
+  onDelete(index: number): void {
+    this.submittedData.splice(index, 1);
+    localStorage.setItem('applications', JSON.stringify(this.submittedData));
+  }
+
+  onExport(): void {
+    const jsonData = JSON.stringify(this.submittedData, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'applications.json';
+    link.click();
+  }
+}
+.form-container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.error-box {
+  color: red;
+  font-size: 0.9em;
+}
+
+button {
+  padding: 10px;
+  margin-top: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.data-table {
+  max-width: 800px;
+  margin: 20px auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background-color: #f5f5f5;
+}
+
+td button {
+  background-color: #28a745;
+  margin-right: 5px;
+}
+
+td button:hover {
+  background-color: #218838;
+}
+
+td button:last-child {
+  background-color: #dc3545;
+}
+
+td button:last-child:hover {
+  background-color: #c82333;
+}
+
+button[type="submit"] {
+  width: 100%;
+}
+
+button[type="submit"]:hover {
+  background-color: #28a745;
+}
+
